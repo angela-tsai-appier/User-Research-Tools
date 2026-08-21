@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research Tools — UX Research, Enterprise Solutions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F1F2EE;
+    --panel: #FFFFFF;
+    --ink: #1E2A28;
+    --ink-soft: #5B655F;
+    --ink-faint: #8B948D;
+    --line: #D7DAD1;
+    --marker: #E8A33D;
+    --marker-tint: #FCEEDA;
+    --marker-ink: #7A4E11;
+    --signal: #2F6F5E;
+    --signal-tint: #E3EEE9;
+    --signal-ink: #1D4B3F;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.6;
+  }
+  .app { max-width: 880px; margin: 0 auto; padding: 56px 24px 80px; }
+
+  .hero { margin-bottom: 36px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+  .hero .tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--signal-ink);
+    background: var(--signal-tint);
+    border-radius: 999px;
+    padding: 3px 10px;
+    margin-bottom: 12px;
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 38px;
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+  .hero p { margin: 0; color: var(--ink-soft); font-size: 15px; max-width: 52ch; }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 14px;
+  }
+
+  .tool-grid { display: grid; gap: 14px; margin-bottom: 40px; }
+
+  .tool-card {
+    display: block;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px 22px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .tool-card:hover { border-color: var(--signal); transform: translateY(-1px); }
+  .tool-card .row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  .tool-card h2 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .tool-card .arrow { font-family: var(--font-mono); color: var(--ink-faint); flex-shrink: 0; }
+  .tool-card p { margin: 0 0 10px; font-size: 14px; color: var(--ink-soft); }
+  .chip {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--marker-tint);
+    color: var(--marker-ink);
+    margin-right: 6px;
+  }
+
+  .tool-card.soon { opacity: 0.6; pointer-events: none; }
+  .tool-card.soon .chip { background: var(--paper); color: var(--ink-faint); }
+
+  .note-panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 20px;
+  }
+  .note-panel h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 10px;
+  }
+  .note-panel ol { margin: 0; padding-left: 20px; }
+  .note-panel li { font-size: 14px; margin-bottom: 7px; color: var(--ink-soft); }
+  .note-panel li:last-child { margin-bottom: 0; }
+  .note-panel code {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    background: var(--paper);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="hero">
+    <span class="tag">UX RESEARCH · ENTERPRISE SOLUTIONS</span>
+    <h1>Research Tools</h1>
+    <p>研究流程用的小工具集合。</p>
+  </div>
+
+  <p class="section-label">工具</p>
+  <div class="tool-grid">
+
+    <a class="tool-card" href="./fieldnote/">
+      <div class="row">
+        <h2>Fieldnote</h2>
+        <span class="arrow">→</span>
+      </div>
+      <p>貼上或錄製訪談逐字稿，自動整理成結構化研究筆記，可直接存進 GitHub 沉澱。</p>
+      <span class="chip">訪談筆記</span>
+      <span class="chip">AI</span>
+      <span class="chip">GitHub</span>
+    </a>
+
+    <a class="tool-card" href="./scheduler/">
+      <div class="row">
+        <h2>Interview Scheduler</h2>
+        <span class="arrow">→</span>
+      </div>
+      <p>產生訪談時段選擇頁，讓受訪者自行挑選時間，回覆後自動建立行事曆邀請。</p>
+      <span class="chip">訪談排程</span>
+    </a>
+
+  </div>
+
+  <div class="note-panel">
+    <h3>使用須知</h3>
+    <ol>
+      <li>AI 產出的筆記是<strong>初稿而非定稿</strong>，正式引用前請對照原始逐字稿確認</li>
+      <li>錄音前請告知受訪者並取得同意</li>
+      <li>錄音功能僅支援 Chrome / Edge，且<strong>不會分辨語者</strong>；正式訪談建議用 Fireflies 或會議工具轉錄後貼上</li>
+    </ol>
+  </div>
+
+  <footer>
+    工具有問題或想加新功能，直接找 Angela。
+  </footer>
+
+</div>
+</body>
+</html>
