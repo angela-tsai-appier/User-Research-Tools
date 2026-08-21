@@ -115,7 +115,11 @@ export default async (request, context) => {
   // 相容舊變數名稱 ANTHROPIC_API_KEY
   const apiKey = Netlify.env.get('API_KEY') || Netlify.env.get('ANTHROPIC_API_KEY');
   const sharedPasscode = Netlify.env.get('SHARED_PASSCODE');
-  const baseUrl = (Netlify.env.get('API_BASE_URL') || DEFAULT_ANTHROPIC_BASE).replace(/\/+$/, '');
+  // 正規化 base URL：去掉結尾斜線，並移除結尾的 /v1
+  // （有些 gateway 給的網址已含 /v1，避免組出 /v1/v1/messages）
+  const baseUrl = (Netlify.env.get('API_BASE_URL') || DEFAULT_ANTHROPIC_BASE)
+    .replace(/\/+$/, '')
+    .replace(/\/v1$/, '');
   const mode = (Netlify.env.get('API_MODE') || 'anthropic').toLowerCase();
 
   // 健康檢查
@@ -128,6 +132,9 @@ export default async (request, context) => {
         passcodeRequired: Boolean(sharedPasscode),
         endpoint: baseUrl,
         mode: mode,
+        resolvedUrl: mode === 'openai'
+          ? baseUrl + '/v1/chat/completions'
+          : baseUrl + '/v1/messages',
       },
       200
     );
