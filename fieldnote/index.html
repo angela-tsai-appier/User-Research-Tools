@@ -239,7 +239,7 @@
   }
   .gen-status.working { display: block; background: var(--signal-tint); color: var(--signal-ink); }
   .gen-status.success { display: block; background: var(--signal-tint); color: var(--signal-ink); }
-  .gen-status.error { display: block; background: var(--danger-tint); color: var(--danger); }
+  .gen-status.error { display: block; background: var(--danger-tint); color: var(--danger); white-space: pre-wrap; word-break: break-word; }
 
   .btn-primary {
     width: 100%;
@@ -1154,20 +1154,34 @@ async function callClaude(systemPrompt, userPrompt, attempt) {
       })
     });
 
-    if (response.status === 401) {
-      throw new Error(currentLang === 'zh'
-        ? '這個站台需要通行碼，請在左側「AI 服務設定」填入（向管理者索取）。'
-        : 'This site requires a passcode. Enter it under "AI 服務設定".');
-    }
-
     if (!response.ok) {
       let detail = 'HTTP ' + response.status;
+      let errBody = null;
       try {
-        const errBody = await response.json();
-        if (errBody.error) {
-          detail = typeof errBody.error === 'string' ? errBody.error : (errBody.error.message || detail);
-        }
-      } catch (e) { /* keep default */ }
+        errBody = await response.json();
+      } catch (e) { /* 回應不是 JSON，沿用預設訊息 */ }
+
+      if (errBody && errBody.error) {
+        detail = typeof errBody.error === 'string'
+          ? errBody.error
+          : (errBody.error.message || detail);
+      }
+
+      // 只有伺服器明確表示通行碼問題時才提示通行碼，
+      // 否則直接顯示真正的錯誤（例如上游金鑰無效）
+      if (response.status === 401 && detail.indexOf('通行碼') !== -1) {
+        throw new Error(currentLang === 'zh'
+          ? '這個站台需要通行碼，請在左側「AI 服務設定」填入（向管理者索取）。'
+          : 'This site requires a passcode. Enter it under "AI 服務設定".');
+      }
+
+      // 附上端點與上游原始回應，方便排查設定問題
+      if (errBody && errBody.endpoint) {
+        detail += '\n端點：' + errBody.endpoint;
+      }
+      if (errBody && errBody.upstream) {
+        detail += '\n上游回應：' + String(errBody.upstream).slice(0, 300);
+      }
       throw new Error(detail);
     }
 
