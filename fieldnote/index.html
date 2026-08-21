@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fieldnote — AI 訪談筆記</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F1F2EE;
+    --panel: #FFFFFF;
+    --ink: #1E2A28;
+    --ink-soft: #5B655F;
+    --ink-faint: #8B948D;
+    --line: #D7DAD1;
+    --marker: #E8A33D;
+    --marker-tint: #FCEEDA;
+    --marker-ink: #7A4E11;
+    --signal: #2F6F5E;
+    --signal-tint: #E3EEE9;
+    --signal-ink: #1D4B3F;
+    --danger: #B4432F;
+    --danger-tint: #F8E7E3;
+    --radius: 10px;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.6;
+  }
+  .app { max-width: 1180px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  .hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 24px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 34px;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .hero .tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--signal-ink);
+    background: var(--signal-tint);
+    border-radius: 999px;
+    padding: 3px 10px;
+    margin-bottom: 10px;
+  }
+  .hero p { margin: 0; color: var(--ink-soft); font-size: 14.5px; max-width: 46ch; }
+  .lang-toggle {
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .lang-toggle button {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 7px 14px;
+    background: var(--panel);
+    border: none;
+    cursor: pointer;
+    color: var(--ink-soft);
+  }
+  .lang-toggle button.active { background: var(--ink); color: var(--paper); }
+
+  .setup-banner {
+    display: none;
+    background: var(--marker-tint);
+    border: 1px solid var(--marker);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 13.5px;
+    color: var(--marker-ink);
+    line-height: 1.55;
+  }
+  .setup-banner.show { display: block; }
+  .setup-banner strong { font-weight: 600; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .panel + .panel { margin-top: 20px; }
+
+  .panel-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+  .field input, .field textarea, .field select {
+    width: 100%;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 11px;
+    resize: vertical;
+  }
+  .field select { height: 38px; }
+  .field input:focus, .field textarea:focus, .field select:focus {
+    outline: none;
+    border-color: var(--signal);
+    box-shadow: 0 0 0 3px var(--signal-tint);
+  }
+  .field textarea#transcript { min-height: 220px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; }
+  .field .hint { font-size: 11.5px; color: var(--ink-faint); margin-top: 5px; }
+  .field .error-msg { font-size: 12px; color: var(--danger); margin-top: 5px; display: none; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 100px; gap: 10px; }
+  #project-row { grid-template-columns: 160px 1fr; }
+
+  .record-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .record-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .record-btn:hover { border-color: var(--ink-soft); }
+  .record-btn.recording {
+    background: var(--danger-tint);
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  .record-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--ink-faint);
+    flex-shrink: 0;
+  }
+  .record-btn.recording .record-dot {
+    background: var(--danger);
+    animation: pulse 1.1s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .record-timer {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  #record-lang {
+    font-family: var(--font-body);
+    font-size: 12.5px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 5px 8px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .record-note {
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .record-error {
+    font-size: 12px;
+    color: var(--danger);
+    margin-bottom: 10px;
+    display: none;
+  }
+
+  .gen-status {
+    margin-top: 10px;
+    font-size: 13px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    display: none;
+    line-height: 1.5;
+  }
+  .gen-status.working { display: block; background: var(--signal-tint); color: var(--signal-ink); }
+  .gen-status.success { display: block; background: var(--signal-tint); color: var(--signal-ink); }
+  .gen-status.error { display: block; background: var(--danger-tint); color: var(--danger); }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 14.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-primary:hover { background: #101816; }
+  .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .btn-secondary {
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-secondary:hover { border-color: var(--ink-soft); }
+  .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(241,242,238,0.35);
+    border-top-color: var(--paper);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  .spinner.dark { border: 2px solid rgba(30,42,40,0.2); border-top-color: var(--ink); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Output area */
+  .output-empty {
+    background: var(--panel);
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--ink-faint);
+    font-size: 14px;
+  }
+  .output-empty .icon-mark {
+    font-family: var(--font-display);
+    font-size: 28px;
+    color: var(--ink-faint);
+    margin-bottom: 10px;
+  }
+
+  .output-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .output-head h2 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 10px;
+  }
+
+  .takeaway-list { list-style: none; padding: 0; margin: 0 0 8px; }
+  .takeaway-list li {
+    position: relative;
+    padding-left: 20px;
+    margin-bottom: 9px;
+    font-size: 14.5px;
+  }
+  .takeaway-list li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 8px;
+    width: 7px; height: 7px;
+    background: var(--signal);
+    border-radius: 2px;
+  }
+
+  /* Evidence clipping — signature element */
+  .clip {
+    display: flex;
+    gap: 12px;
+    background: var(--paper);
+    border-left: 2px dashed var(--ink-faint);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+  }
+  .clip .meta {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 74px;
+  }
+  .clip .ts {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: var(--signal-tint);
+    color: var(--signal-ink);
+    border-radius: 4px;
+    padding: 2px 6px;
+    text-align: center;
+  }
+  .clip .topic {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    background: var(--marker-tint);
+    color: var(--marker-ink);
+    border-radius: 4px;
+    padding: 2px 6px;
+    text-align: center;
+    word-break: break-word;
+  }
+  .clip .quote {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink);
+    margin: 0;
+  }
+
+  .theme-block { margin-bottom: 16px; }
+  .theme-block .theme-title {
+    font-weight: 600;
+    font-size: 15px;
+    margin: 0 0 8px;
+    display: inline-block;
+    border-bottom: 2px solid var(--marker);
+    padding-bottom: 2px;
+  }
+  .theme-block ul { margin: 0; padding-left: 18px; }
+  .theme-block li { font-size: 14px; margin-bottom: 5px; }
+
+  table.coverage { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.coverage th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    color: var(--ink-faint);
+    font-weight: 500;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  table.coverage td {
+    padding: 8px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  .status-pill {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .status-answered { background: var(--signal-tint); color: var(--signal-ink); }
+  .status-vague { background: var(--marker-tint); color: var(--marker-ink); }
+  .status-notasked { background: var(--danger-tint); color: var(--danger); }
+
+  .next-list { list-style: none; padding: 0; margin: 0; }
+  .next-list li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  .next-list li::before {
+    content: '→';
+    color: var(--marker-ink);
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+  }
+
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* GitHub panel */
+  .gh-path-row { display: flex; gap: 8px; align-items: center; }
+  .gh-path-row input { flex: 1; }
+  .gh-status {
+    margin-top: 12px;
+    font-size: 13px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    display: none;
+  }
+  .gh-status.success { display: block; background: var(--signal-tint); color: var(--signal-ink); }
+  .gh-status.error { display: block; background: var(--danger-tint); color: var(--danger); }
+  .gh-status a { color: inherit; font-weight: 500; }
+  .gh-note {
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="hero">
+    <div>
+      <span class="tag">AI-ASSISTED NOTE TAKING</span>
+      <h1 id="hero-title">Fieldnote — AI 訪談筆記</h1>
+      <p id="hero-sub">貼上逐字稿，幾秒內整理成可分享的研究筆記，並可直接存進 GitHub repo 沉澱。</p>
+    </div>
+    <div class="lang-toggle" role="group" aria-label="輸出語言">
+      <button id="lang-zh" class="active">中文</button>
+      <button id="lang-en">EN</button>
+    </div>
+  </div>
+
+  <div class="setup-banner" id="setup-banner">
+    <strong>第一次使用？</strong>請先在左側「AI 服務設定」填入團隊通行碼（向 Angela 索取）。填一次即可，這台電腦的瀏覽器會記住。
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="panel">
+        <p class="panel-title">訪談內容</p>
+        <div class="field">
+          <label for="role">受訪者角色 / 公司（選填）</label>
+          <input id="role" type="text" placeholder="例如：資安主管，某電商平台">
+        </div>
+        <div class="field">
+          <label for="topics">訪綱主題（選填，逗號分隔，用來檢查涵蓋度）</label>
+          <input id="topics" type="text" placeholder="例如：成本控管, 權限治理, 導入痛點">
+        </div>
+        <div class="field-row" id="project-row">
+          <div class="field">
+            <label for="project">產品 / 專案</label>
+            <select id="project">
+              <option value="aiqua">AIQUA</option>
+              <option value="airis">AIRIS</option>
+              <option value="botbonnie">BotBonnie</option>
+              <option value="moses">Moses（LLM Gateway）</option>
+              <option value="agent">Agent</option>
+              <option value="innovation-exploration">創新探索</option>
+              <option value="foundational-research">使用者基礎研究</option>
+              <option value="__other__">其他…</option>
+            </select>
+          </div>
+          <div class="field" id="project-other-field" style="display:none;">
+            <label for="project-other">資料夾名稱</label>
+            <input id="project-other" type="text" placeholder="例如：m3-campaign">
+          </div>
+        </div>
+        <div class="field">
+          <label for="transcript">逐字稿</label>
+          <div class="record-row">
+            <button class="record-btn" id="record-btn"><span class="record-dot"></span><span id="record-btn-label">開始錄音</span></button>
+            <span class="record-timer" id="record-timer"></span>
+            <select id="record-lang">
+              <option value="zh-TW">中文（繁體）</option>
+              <option value="en-US">English</option>
+            </select>
+          </div>
+          <div class="record-error" id="record-error"></div>
+          <p class="record-note">使用瀏覽器內建語音辨識（僅支援 Chrome / Edge，Safari 請改用手動貼上）。錄音內容會即時送到瀏覽器廠商的語音辨識服務轉成文字。不會自動分辨語者，建議搭配外放或麥克風收音，辨識完仍建議人工檢查。</p>
+          <textarea id="transcript" placeholder="貼上逐字稿全文，或按上方「開始錄音」即時收錄。若有時間戳記請保留，筆記會引用。"></textarea>
+          <div class="hint">建議單次貼上 30-40 分鐘內容；逐字稿過長時，可分段貼上分次產生。</div>
+          <div class="error-msg" id="transcript-error">請先貼上逐字稿內容。</div>
+        </div>
+        <button class="btn-primary" id="generate-btn">
+          <span id="btn-label">產生筆記</span>
+        </button>
+        <div class="gen-status" id="gen-status"></div>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">AI 服務設定</p>
+        <div class="field">
+          <label for="worker-passcode">團隊通行碼（選填）</label>
+          <input id="worker-passcode" type="password" placeholder="站台未設定通行碼時免填">
+        </div>
+        <p class="gh-note">若管理者有設定通行碼，填一次即可，之後這台電腦會記住。API 金鑰只存在伺服器端，不會出現在網頁裡。</p>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">GitHub 設定</p>
+        <div class="field">
+          <label for="gh-repo">Repo（owner/repo）</label>
+          <input id="gh-repo" type="text" placeholder="例如：appier-org/moses-research-notes">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="gh-prefix">路徑前綴</label>
+            <input id="gh-prefix" type="text" placeholder="notes/" value="notes/">
+          </div>
+          <div class="field">
+            <label for="gh-branch">分支</label>
+            <input id="gh-branch" type="text" placeholder="main" value="main">
+          </div>
+        </div>
+        <div class="field">
+          <label for="gh-token">Personal Access Token</label>
+          <input id="gh-token" type="password" placeholder="ghp_ 或 github_pat_ 開頭">
+        </div>
+        <p class="gh-note">Token 只會留在這個瀏覽器分頁的記憶體中，直接對 api.github.com 送出請求，不會被儲存或經過任何中介伺服器。建議使用 fine-grained token，只授權這個 repo 的 Contents 讀寫權限。Repo / 路徑 / 分支設定會記住，Token 每次重新整理需要重新貼上。</p>
+      </div>
+    </div>
+
+    <div id="output-col">
+      <div class="output-empty" id="empty-state">
+        <div class="icon-mark">"</div>
+        貼上逐字稿並按下「產生筆記」，整理好的訪談筆記會顯示在這裡。
+      </div>
+
+      <div id="results" style="display:none;">
+        <div class="panel">
+          <div class="output-head">
+            <h2>快速結論</h2>
+            <div class="toolbar">
+              <button class="btn-secondary" id="copy-btn">複製為 Markdown</button>
+            </div>
+          </div>
+          <ul class="takeaway-list" id="takeaways-list"></ul>
+
+          <div class="gh-path-row">
+            <input id="gh-path" type="text" placeholder="notes/2026-08-14-interview.md">
+            <button class="btn-secondary" id="save-github-btn">存進 GitHub</button>
+          </div>
+          <div class="gh-status" id="gh-status"></div>
+        </div>
+
+        <div class="panel">
+          <p class="section-label">關鍵引述</p>
+          <div id="quotes-list"></div>
+        </div>
+
+        <div class="panel">
+          <p class="section-label">主題整理</p>
+          <div id="themes-list"></div>
+        </div>
+
+        <div class="panel">
+          <p class="section-label">訪綱涵蓋度</p>
+          <table class="coverage" id="coverage-table">
+            <thead><tr><th>題目 / 主題</th><th>狀態</th><th>備註</th></tr></thead>
+            <tbody id="coverage-body"></tbody>
+          </table>
+        </div>
+
+        <div class="panel">
+          <p class="section-label">下一步</p>
+          <ul class="next-list" id="next-list"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- Storage shim ---
+// 在 Claude 介面中執行時使用 artifact storage；
+// 下載到本機以檔案開啟時 artifact storage 不存在，改用 localStorage；
+// 兩者都不可用時退回記憶體（重新整理後即失效）。
+const memoryStore = {};
+const appStorage = {
+  async get(key) {
+    try {
+      if (typeof window.storage !== 'undefined' && window.storage) {
+        const r = await window.storage.get(key, false);
+        return r ? r.value : null;
+      }
+    } catch (e) { /* fall through */ }
+    try {
+      return window.localStorage.getItem(key);
+    } catch (e) {
+      return memoryStore[key] || null;
+    }
+  },
+  async set(key, value) {
+    try {
+      if (typeof window.storage !== 'undefined' && window.storage) {
+        await window.storage.set(key, value, false);
+        return;
+      }
+    } catch (e) { /* fall through */ }
+    try {
+      window.localStorage.setItem(key, value);
+    } catch (e) {
+      memoryStore[key] = value;
+    }
+  }
+};
+
+// --- Recording via Web Speech API ---
+let recognition = null;
+let isRecording = false;
+let recordStartTime = null;
+let recordAccumulatedMs = 0;
+let recordTimerInterval = null;
+let userStoppedRecording = false;
+
+function currentElapsedMs() {
+  const running = recordStartTime ? (Date.now() - recordStartTime) : 0;
+  return recordAccumulatedMs + running;
+}
+
+function formatElapsed(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = n => String(n).padStart(2, '0');
+  return h > 0 ? pad(h) + ':' + pad(m) + ':' + pad(s) : pad(m) + ':' + pad(s);
+}
+
+function updateRecordTimer() {
+  document.getElementById('record-timer').textContent = formatElapsed(currentElapsedMs());
+}
+
+function getSpeechRecognitionClass() {
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+function appendTranscriptSegment(text) {
+  if (!text.trim()) return;
+  const ta = document.getElementById('transcript');
+  const ts = formatElapsed(currentElapsedMs());
+  const line = ts + '\n' + text.trim() + '\n\n';
+  ta.value = ta.value ? (ta.value.replace(/\n*$/, '\n\n') + line) : line;
+  ta.scrollTop = ta.scrollHeight;
+  document.getElementById('transcript-error').style.display = 'none';
+}
+
+function startRecording() {
+  const SpeechRecognitionClass = getSpeechRecognitionClass();
+  const errorEl = document.getElementById('record-error');
+  errorEl.style.display = 'none';
+
+  if (!SpeechRecognitionClass) {
+    errorEl.textContent = currentLang === 'zh'
+      ? '這個瀏覽器不支援語音辨識，請改用 Chrome 或 Edge，或直接手動貼上逐字稿。'
+      : 'This browser does not support speech recognition. Use Chrome or Edge, or paste a transcript manually.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  recognition = new SpeechRecognitionClass();
+  recognition.lang = document.getElementById('record-lang').value;
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onresult = (event) => {
+    let finalText = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        finalText += event.results[i][0].transcript;
+      }
+    }
+    if (finalText) appendTranscriptSegment(finalText);
+  };
+
+  recognition.onerror = (event) => {
+    if (event.error === 'no-speech' || event.error === 'aborted') return;
+    errorEl.textContent = (currentLang === 'zh' ? '語音辨識發生問題：' : 'Speech recognition error: ') + event.error;
+    errorEl.style.display = 'block';
+  };
+
+  recognition.onend = () => {
+    if (isRecording && !userStoppedRecording) {
+      try { recognition.start(); } catch (e) { /* already starting, ignore */ }
+    }
+  };
+
+  userStoppedRecording = false;
+  try {
+    recognition.start();
+  } catch (e) {
+    errorEl.textContent = currentLang === 'zh' ? '無法啟動麥克風，請確認已授權存取權限。' : 'Could not start the microphone. Check permissions.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  isRecording = true;
+  recordStartTime = Date.now();
+  recordTimerInterval = setInterval(updateRecordTimer, 1000);
+
+  const btn = document.getElementById('record-btn');
+  btn.classList.add('recording');
+  document.getElementById('record-btn-label').textContent = currentLang === 'zh' ? '停止錄音' : 'Stop recording';
+  document.getElementById('record-lang').disabled = true;
+}
+
+function stopRecording() {
+  userStoppedRecording = true;
+  isRecording = false;
+  if (recordStartTime) {
+    recordAccumulatedMs += Date.now() - recordStartTime;
+    recordStartTime = null;
+  }
+  if (recognition) {
+    try { recognition.stop(); } catch (e) { /* ignore */ }
+  }
+  clearInterval(recordTimerInterval);
+  recordTimerInterval = null;
+
+  const btn = document.getElementById('record-btn');
+  btn.classList.remove('recording');
+  document.getElementById('record-btn-label').textContent = currentLang === 'zh' ? '開始錄音' : 'Start recording';
+  document.getElementById('record-lang').disabled = false;
+}
+
+document.getElementById('record-btn').addEventListener('click', () => {
+  if (isRecording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+});
+
+let currentLang = 'zh';
+let lastResult = null;
+
+const copyForLang = {
+  zh: {
+    title: 'Fieldnote — AI 訪談筆記',
+    sub: '貼上逐字稿，幾秒內整理成可分享的研究筆記，並可直接存進 GitHub repo 沉澱。',
+    btnIdle: '產生筆記',
+    btnLoading: '整理中…',
+    empty: '貼上逐字稿並按下「產生筆記」，整理好的訪談筆記會顯示在這裡。',
+    errNoTranscript: '請先貼上逐字稿內容。',
+    errApi: '產生筆記時發生問題，請稍後再試一次。',
+    headTakeaways: '快速結論',
+    labelQuotes: '關鍵引述',
+    labelThemes: '主題整理',
+    labelCoverage: '訪綱涵蓋度',
+    labelNext: '下一步',
+    copyBtn: '複製為 Markdown',
+    copied: '已複製',
+    saveBtn: '存進 GitHub',
+    saving: '儲存中…',
+    ghMissing: '請先填寫 Repo 與 Token。',
+    ghSuccessPrefix: '已儲存到',
+    ghErrorPrefix: '儲存失敗：',
+    covHeaders: ['題目 / 主題', '狀態', '備註'],
+    status: { asked_answered: '已問到', asked_vague: '答得模糊', not_asked: '未問到' }
+  },
+  en: {
+    title: 'Fieldnote — AI interview notes',
+    sub: 'Paste a transcript, get shareable research notes in seconds, and save straight to a GitHub repo.',
+    btnIdle: 'Generate notes',
+    btnLoading: 'Working…',
+    empty: 'Paste a transcript and generate notes to see them here.',
+    errNoTranscript: 'Paste a transcript first.',
+    errApi: 'Something went wrong generating notes. Try again.',
+    headTakeaways: 'Quick takeaways',
+    labelQuotes: 'Key quotes',
+    labelThemes: 'Themes',
+    labelCoverage: 'Guide coverage',
+    labelNext: 'Next steps',
+    copyBtn: 'Copy as markdown',
+    copied: 'Copied',
+    saveBtn: 'Save to GitHub',
+    saving: 'Saving…',
+    ghMissing: 'Fill in the repo and token first.',
+    ghSuccessPrefix: 'Saved to',
+    ghErrorPrefix: 'Save failed: ',
+    covHeaders: ['Question / topic', 'Status', 'Note'],
+    status: { asked_answered: 'Answered', asked_vague: 'Vague', not_asked: 'Not asked' }
+  }
+};
+
+function applyLangCopy() {
+  const c = copyForLang[currentLang];
+  document.getElementById('hero-title').textContent = c.title;
+  document.getElementById('hero-sub').textContent = c.sub;
+  document.getElementById('btn-label').textContent = c.btnIdle;
+  document.getElementById('empty-state').lastChild.textContent = c.empty;
+  document.getElementById('transcript-error').textContent = c.errNoTranscript;
+  document.querySelector('#results .output-head h2').textContent = c.headTakeaways;
+  document.querySelectorAll('.section-label')[0].textContent = c.labelQuotes;
+  document.querySelectorAll('.section-label')[1].textContent = c.labelThemes;
+  document.querySelectorAll('.section-label')[2].textContent = c.labelCoverage;
+  document.querySelectorAll('.section-label')[3].textContent = c.labelNext;
+  document.getElementById('copy-btn').textContent = c.copyBtn;
+  document.getElementById('save-github-btn').textContent = c.saveBtn;
+  if (!isRecording) {
+    document.getElementById('record-btn-label').textContent = currentLang === 'zh' ? '開始錄音' : 'Start recording';
+  }
+  const covHeadCells = document.querySelectorAll('#coverage-table th');
+  c.covHeaders.forEach((t, i) => { if (covHeadCells[i]) covHeadCells[i].textContent = t; });
+  if (lastResult) renderResult(lastResult);
+}
+
+document.getElementById('lang-zh').addEventListener('click', () => {
+  currentLang = 'zh';
+  document.getElementById('lang-zh').classList.add('active');
+  document.getElementById('lang-en').classList.remove('active');
+  applyLangCopy();
+});
+document.getElementById('lang-en').addEventListener('click', () => {
+  currentLang = 'en';
+  document.getElementById('lang-en').classList.add('active');
+  document.getElementById('lang-zh').classList.remove('active');
+  applyLangCopy();
+});
+
+function statusClass(status) {
+  if (status === 'asked_answered') return 'status-answered';
+  if (status === 'asked_vague') return 'status-vague';
+  return 'status-notasked';
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+document.getElementById('project').addEventListener('change', () => {
+  const otherField = document.getElementById('project-other-field');
+  otherField.style.display = document.getElementById('project').value === '__other__' ? 'block' : 'none';
+});
+
+function getProjectFolder() {
+  const val = document.getElementById('project').value;
+  if (val === '__other__') {
+    return slugify(document.getElementById('project-other').value.trim());
+  }
+  return val;
+}
+
+function slugify(str) {
+  if (!str) return 'interview';
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'interview';
+}
+
+function renderResult(data) {
+  const c = copyForLang[currentLang];
+
+  const takeawaysEl = document.getElementById('takeaways-list');
+  takeawaysEl.innerHTML = (data.quick_takeaways || []).map(t => '<li>' + escapeHtml(t) + '</li>').join('');
+
+  const quotesEl = document.getElementById('quotes-list');
+  quotesEl.innerHTML = (data.quotes || []).map(q => {
+    const ts = q.timestamp ? '<span class="ts">' + escapeHtml(q.timestamp) + '</span>' : '';
+    const topic = q.topic ? '<span class="topic">' + escapeHtml(q.topic) + '</span>' : '';
+    return '<div class="clip"><div class="meta">' + ts + topic + '</div><p class="quote">' + escapeHtml(q.quote) + '</p></div>';
+  }).join('');
+
+  const themesEl = document.getElementById('themes-list');
+  themesEl.innerHTML = (data.themes || []).map(th => {
+    const points = (th.points || []).map(p => '<li>' + escapeHtml(p) + '</li>').join('');
+    return '<div class="theme-block"><span class="theme-title">' + escapeHtml(th.topic) + '</span><ul>' + points + '</ul></div>';
+  }).join('');
+
+  const covBody = document.getElementById('coverage-body');
+  covBody.innerHTML = (data.coverage || []).map(row => {
+    const label = escapeHtml(c.status[row.status] || row.status);
+    return '<tr><td>' + escapeHtml(row.question) + '</td><td><span class="status-pill ' + statusClass(row.status) + '">' + label + '</span></td><td>' + escapeHtml(row.note || '') + '</td></tr>';
+  }).join('');
+
+  const nextEl = document.getElementById('next-list');
+  nextEl.innerHTML = (data.next_steps || []).map(n => '<li>' + escapeHtml(n) + '</li>').join('');
+
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+
+  const role = document.getElementById('role').value.trim();
+  const prefix = document.getElementById('gh-prefix').value.trim() || 'notes/';
+  const normalizedPrefix = prefix.endsWith('/') ? prefix : prefix + '/';
+  const projectFolder = getProjectFolder();
+  const dateStr = new Date().toISOString().slice(0, 10);
+  document.getElementById('gh-path').value = normalizedPrefix + projectFolder + '/' + dateStr + '-' + slugify(role) + '.md';
+  document.getElementById('gh-status').style.display = 'none';
+}
+
+function toMarkdown(data) {
+  const c = copyForLang[currentLang];
+  const role = document.getElementById('role').value.trim();
+  const topics = document.getElementById('topics').value.trim();
+  const dateStr = new Date().toISOString().slice(0, 10);
+
+  let md = '---\n';
+  md += 'date: ' + dateStr + '\n';
+  md += 'project: "' + getProjectFolder() + '"\n';
+  md += 'participant: "' + (role || '') + '"\n';
+  md += 'guide_topics: "' + (topics || '') + '"\n';
+  md += 'generated_by: fieldnote-tool\n';
+  md += '---\n\n';
+
+  md += '# ' + c.headTakeaways + '\n\n';
+  (data.quick_takeaways || []).forEach(t => md += '- ' + t + '\n');
+  md += '\n## ' + c.labelQuotes + '\n\n';
+  (data.quotes || []).forEach(q => md += '- [' + (q.timestamp || '') + '] (' + (q.topic || '') + ') "' + q.quote + '"\n');
+  md += '\n## ' + c.labelThemes + '\n\n';
+  (data.themes || []).forEach(th => {
+    md += '**' + th.topic + '**\n';
+    (th.points || []).forEach(p => md += '- ' + p + '\n');
+    md += '\n';
+  });
+  md += '## ' + c.labelCoverage + '\n\n';
+  (data.coverage || []).forEach(row => md += '- ' + row.question + ': ' + (c.status[row.status] || row.status) + (row.note ? ' — ' + row.note : '') + '\n');
+  md += '\n## ' + c.labelNext + '\n\n';
+  (data.next_steps || []).forEach(n => md += '- ' + n + '\n');
+  return md;
+}
+
+document.getElementById('copy-btn').addEventListener('click', async () => {
+  if (!lastResult) return;
+  const md = toMarkdown(lastResult);
+  try {
+    await navigator.clipboard.writeText(md);
+    const btn = document.getElementById('copy-btn');
+    const original = btn.textContent;
+    btn.textContent = copyForLang[currentLang].copied;
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  } catch (e) {
+    console.error('Clipboard error', e);
+  }
+});
+
+function toBase64Utf8(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+function encodeGithubPath(path) {
+  return path.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+}
+
+// 共用設定（Worker 網址、通行碼、GitHub）在所有 research-tools 工具間共享，
+// 同事只要在任一工具設定過，其他工具就會自動帶入。
+const SHARED_CONFIG_KEY = 'research-tools-config';
+
+function refreshSetupBanner() {
+  // 沒有通行碼也能用，因此不強制顯示設定提示
+  const configured = true;
+  document.getElementById('setup-banner').classList.toggle('show', !configured);
+}
+
+async function loadConfig() {
+  try {
+    const raw = await appStorage.get(SHARED_CONFIG_KEY);
+    if (!raw) return;
+    const cfg = JSON.parse(raw);
+    if (cfg.repo) document.getElementById('gh-repo').value = cfg.repo;
+    if (cfg.branch) document.getElementById('gh-branch').value = cfg.branch;
+    if (cfg.prefix) document.getElementById('gh-prefix').value = cfg.prefix;
+    if (cfg.passcode) document.getElementById('worker-passcode').value = cfg.passcode;
+    if (cfg.project) {
+      document.getElementById('project').value = cfg.project;
+      document.getElementById('project-other-field').style.display =
+        cfg.project === '__other__' ? 'block' : 'none';
+    }
+  } catch (e) {
+    console.warn('No saved config yet');
+  }
+  refreshSetupBanner();
+}
+
+async function saveConfig() {
+  const cfg = {
+    repo: document.getElementById('gh-repo').value.trim(),
+    branch: document.getElementById('gh-branch').value.trim() || 'main',
+    prefix: document.getElementById('gh-prefix').value.trim() || 'notes/',
+    passcode: document.getElementById('worker-passcode').value,
+    project: document.getElementById('project').value
+  };
+  try {
+    await appStorage.set(SHARED_CONFIG_KEY, JSON.stringify(cfg));
+  } catch (e) {
+    console.error('Could not save config', e);
+  }
+  refreshSetupBanner();
+}
+
+['gh-repo', 'gh-branch', 'gh-prefix', 'worker-passcode', 'project'].forEach(id => {
+  document.getElementById(id).addEventListener('change', saveConfig);
+});
+
+loadConfig();
+
+async function saveToGithub() {
+  const c = copyForLang[currentLang];
+  const repo = document.getElementById('gh-repo').value.trim();
+  const branch = document.getElementById('gh-branch').value.trim() || 'main';
+  const token = document.getElementById('gh-token').value.trim();
+  const path = document.getElementById('gh-path').value.trim();
+  const statusEl = document.getElementById('gh-status');
+  const btn = document.getElementById('save-github-btn');
+
+  statusEl.className = 'gh-status';
+  statusEl.style.display = 'none';
+
+  if (!repo || !token || !path || !lastResult) {
+    statusEl.textContent = c.ghMissing;
+    statusEl.className = 'gh-status error';
+    return;
+  }
+
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = c.saving;
+
+  try {
+    const encodedPath = encodeGithubPath(path);
+    const apiUrl = 'https://api.github.com/repos/' + repo + '/contents/' + encodedPath;
+    const headers = {
+      'Authorization': 'Bearer ' + token,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+
+    let sha;
+    const getRes = await fetch(apiUrl + '?ref=' + encodeURIComponent(branch), { headers });
+    if (getRes.ok) {
+      const getJson = await getRes.json();
+      sha = getJson.sha;
+    } else if (getRes.status !== 404) {
+      const errJson = await getRes.json().catch(() => ({}));
+      throw new Error(errJson.message || ('HTTP ' + getRes.status));
+    }
+
+    const content = toMarkdown(lastResult);
+    const body = {
+      message: 'Add interview notes: ' + path,
+      content: toBase64Utf8(content),
+      branch: branch
+    };
+    if (sha) body.sha = sha;
+
+    const putRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
+      body: JSON.stringify(body)
+    });
+
+    if (!putRes.ok) {
+      const errJson = await putRes.json().catch(() => ({}));
+      throw new Error(errJson.message || ('HTTP ' + putRes.status));
+    }
+
+    const putJson = await putRes.json();
+    const htmlUrl = putJson.content && putJson.content.html_url;
+    statusEl.innerHTML = c.ghSuccessPrefix + ' <a href="' + htmlUrl + '" target="_blank" rel="noopener">' + path + '</a>';
+    statusEl.className = 'gh-status success';
+    saveConfig();
+  } catch (err) {
+    console.error('GitHub save error', err);
+    statusEl.textContent = c.ghErrorPrefix + err.message;
+    statusEl.className = 'gh-status error';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+
+document.getElementById('save-github-btn').addEventListener('click', saveToGithub);
+
+const TOOL_ID = 'fieldnote';
+// 網頁與 API 同源，直接用相對路徑，同事不需要設定任何網址
+const API_ENDPOINT = '/api/' + TOOL_ID;
+
+async function callClaude(systemPrompt, userPrompt, attempt) {
+  attempt = attempt || 1;
+
+  const passcode = document.getElementById('worker-passcode').value;
+
+  // 通行碼為選用：伺服器未啟用時留空即可，有填才送出
+  const headers = { 'Content-Type': 'application/json' };
+  if (passcode) {
+    headers['X-Fieldnote-Passcode'] = passcode;
+  }
+
+  try {
+    const response = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+
+    if (response.status === 401) {
+      throw new Error(currentLang === 'zh'
+        ? '這個站台需要通行碼，請在左側「AI 服務設定」填入（向管理者索取）。'
+        : 'This site requires a passcode. Enter it under "AI 服務設定".');
+    }
+
+    if (!response.ok) {
+      let detail = 'HTTP ' + response.status;
+      try {
+        const errBody = await response.json();
+        if (errBody.error) {
+          detail = typeof errBody.error === 'string' ? errBody.error : (errBody.error.message || detail);
+        }
+      } catch (e) { /* keep default */ }
+      throw new Error(detail);
+    }
+
+    return await response.json();
+  } catch (err) {
+    const isNetworkError = err instanceof TypeError || /failed to fetch/i.test(err.message || '');
+    if (isNetworkError && attempt < 3) {
+      await new Promise(r => setTimeout(r, attempt * 1200));
+      return callClaude(systemPrompt, userPrompt, attempt + 1);
+    }
+    if (isNetworkError) {
+      throw new Error(currentLang === 'zh'
+        ? '連線失敗，重試 3 次仍無法連上伺服器。請確認網路連線是否正常，或稍後再試。'
+        : 'Connection failed after 3 retries. Check your network connection and try again.');
+    }
+    throw err;
+  }
+}
+
+async function generateNotes() {
+  if (isRecording) stopRecording();
+
+  const transcript = document.getElementById('transcript').value.trim();
+  const errorEl = document.getElementById('transcript-error');
+  const statusEl = document.getElementById('gen-status');
+  statusEl.className = 'gen-status';
+
+  if (!transcript) {
+    errorEl.style.display = 'block';
+    return;
+  }
+  errorEl.style.display = 'none';
+
+  statusEl.textContent = currentLang === 'zh' ? '整理中，請稍候…' : 'Working on it…';
+  statusEl.className = 'gen-status working';
+
+  const role = document.getElementById('role').value.trim();
+  const topics = document.getElementById('topics').value.trim();
+
+  const btn = document.getElementById('generate-btn');
+  const btnLabel = document.getElementById('btn-label');
+  btn.disabled = true;
+  btnLabel.innerHTML = '';
+  const spinner = document.createElement('span');
+  spinner.className = 'spinner';
+  btn.prepend(spinner);
+  btnLabel.textContent = copyForLang[currentLang].btnLoading;
+
+  const languageInstruction = currentLang === 'zh'
+    ? '請用繁體中文輸出所有欄位內容。'
+    : 'Write all field content in English.';
+
+  const systemPrompt = '你是資深質化研究助理，負責把訪談逐字稿整理成結構化筆記。規則：\n' +
+    '1. 引述必須是逐字稿原文的直接摘錄，不可改寫，若逐字稿有時間戳記請附上，沒有則留空字串。\n' +
+    '2. 結論只能來自逐字稿內容，不可推論受訪者沒說過的意圖，也不要把猶豫或矛盾講得比較篤定。\n' +
+    '3. 如果有提供訪綱主題，請針對每個主題判斷 asked_answered、asked_vague、not_asked，並給簡短備註；沒有提供訪綱主題就回傳空陣列。\n' +
+    '4. ' + languageInstruction + '\n' +
+    '5. 只能輸出一個 JSON 物件，不要有任何其他文字、不要用 markdown code fence。\n' +
+    '6. 內容要精簡，優先保留最重要的 3-6 條重點、4-8 則引述。\n\n' +
+    'JSON 結構：\n' +
+    '{"quick_takeaways": ["string"], "quotes": [{"timestamp": "string", "quote": "string", "topic": "string"}], "themes": [{"topic": "string", "points": ["string"]}], "coverage": [{"question": "string", "status": "asked_answered|asked_vague|not_asked", "note": "string"}], "next_steps": ["string"]}';
+
+  const userPrompt = '受訪者角色/公司：' + (role || '未提供') + '\n訪綱主題：' + (topics || '未提供') + '\n\n逐字稿：\n' + transcript;
+
+  try {
+    const data = await callClaude(systemPrompt, userPrompt);
+    const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+    const cleaned = textBlocks.replace(/```json|```/g, '').trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (parseErr) {
+      if (data.stop_reason === 'max_tokens') {
+        throw new Error(currentLang === 'zh'
+          ? '逐字稿內容太長，筆記在產生過程中被截斷。請試著分段貼上，或先精簡逐字稿再試一次。'
+          : 'The transcript is too long and the notes got cut off mid-generation. Try pasting a shorter section, or trim the transcript first.');
+      }
+      throw parseErr;
+    }
+
+    lastResult = parsed;
+    renderResult(parsed);
+
+    statusEl.textContent = currentLang === 'zh' ? '筆記已產生，請往下查看結果。' : 'Notes generated — see the results below.';
+    statusEl.className = 'gen-status success';
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    console.error('Fieldnote generation error', err);
+    statusEl.textContent = err.message || copyForLang[currentLang].errApi;
+    statusEl.className = 'gen-status error';
+    const emptyState = document.getElementById('empty-state');
+    emptyState.style.display = 'block';
+    emptyState.lastChild.textContent = err.message || copyForLang[currentLang].errApi;
+    document.getElementById('results').style.display = 'none';
+  } finally {
+    btn.disabled = false;
+    spinner.remove();
+    btnLabel.textContent = copyForLang[currentLang].btnIdle;
+  }
+}
+
+document.getElementById('generate-btn').addEventListener('click', generateNotes);
+document.getElementById('transcript').addEventListener('input', () => {
+  document.getElementById('transcript-error').style.display = 'none';
+});
+</script>
+</body>
+</html>
